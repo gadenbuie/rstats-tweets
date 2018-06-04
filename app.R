@@ -38,7 +38,7 @@ ui <- fluidPage(
   tags$head(
     tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
     tags$script(src="twitter.js")),
-  titlePanel("rstatsnyc tweets"),
+  titlePanel("rstats tweets"),
   theme = shinythemes::shinytheme('yeti'),
   
   
@@ -94,13 +94,13 @@ server <- function(input, output) {
   tweets <- reactive({
     x <- switch(
       input$view,
-      'Popular' = conf_tweets %>% 
+      'Popular' = rstats_tweets %>% 
         arrange(desc(retweet_count + favorite_count), 
                 -map_int(mentions_screen_name, length)),
-      'Tips' = conf_tweets %>% filter(relates_tip, !is_retweet),
-      'Talks' = conf_tweets %>% filter(relates_session, !is_retweet),
-      'Pictures' = conf_tweets %>% filter(!is_retweet, !is.na(media_url)),
-     conf_tweets
+      'Tips' = rstats_tweets %>% filter(relates_tip, !is_retweet),
+      'Talks' = rstats_tweets %>% filter(relates_session, !is_retweet),
+      'Pictures' = rstats_tweets %>% filter(!is_retweet, !is.na(media_url)),
+     rstats_tweets
     ) 
     
     if (input$view %in% c('All', 'Popular')) {
@@ -114,12 +114,12 @@ server <- function(input, output) {
             'Has Link' = filter(x, !is.na(urls_url)),
             'Has Github Link' = filter(x, str_detect(urls_url, "github")),
             "Retweeted" = filter(x, retweet_count > 0),
-            "Favorited" = filter(x, favorite_count > 0),
-            "Probably There IRL" = x %>% lat_lng() %>% 
-              filter( 
-                str_detect(tolower(place_full_name), "new york city|nyc|new york") | 
-                  close_to_lat_lng(lat, lng, "New York City, NY")
-              )
+            "Favorited" = filter(x, favorite_count > 0)
+            # "Most Popular Users" = x %>% lat_lng() %>% 
+            #   filter( 
+            #     str_detect(tolower(place_full_name), "portland|oregon") | 
+            #       close_to_lat_lng(lat, lng, "Portland, OR")
+            #   )
           )
         }
       }
@@ -135,14 +135,14 @@ server <- function(input, output) {
   
   hashtags_related <- reactive({
     req(input$view %in% c('All', 'Popular'))
-    if (is.null(input$filter_hashtag) || input$filter_hashtag == '') return(top_10_hashtags)
+    if (is.null(input$filter_hashtag) || input$filter_hashtag == '') return(top_hashtags)
     limit_to_tags <- related_hashtags %>% 
       filter(tag %in% input$filter_hashtag) %>% 
       pull(related) %>% 
       unique()
-    top_10_hashtags %>% 
-      filter(`Top 10 Hashtags` %in% c(limit_to_tags, input$filter_hashtag)) %>% 
-      pull(`Top 10 Hashtags`)
+    top_hashtags %>% 
+      filter(`Top Hashtags` %in% c(limit_to_tags, input$filter_hashtag)) %>% 
+      pull(`Top Hashtags`)
   })
   
   output$filters <- renderUI({
@@ -151,7 +151,7 @@ server <- function(input, output) {
     if (input$view %in% c('All', 'Popular')) {
       tagList(
         checkboxGroupInput('filter_binary', 'Tweet Filters', 
-                           choices = c("Not Retweet", "Not Quote", "Has Media", "Has Link", "Has Github Link", "Retweeted", "Favorited", "Probably There IRL"), 
+                           choices = c("Not Retweet", "Not Quote", "Has Media", "Has Link", "Has Github Link", "Retweeted", "Favorited"), 
                            selected = selected_binary,
                            inline = TRUE),
         selectizeInput('filter_hashtag', 'Hashtags', choices = c("", hashtags_related()), selected = selected_hashtags, 
@@ -189,10 +189,10 @@ server <- function(input, output) {
   
   output$download_tweets <-  downloadHandler(
     filename = function() {
-      paste("rstudio-conf-tweets-", Sys.Date(), ".RDS", sep="")
+      paste("rstats_tweets-", Sys.Date(), ".RDS", sep="")
     },
     content = function(file) {
-      saveRDS(conf_tweets, file)
+      saveRDS(rstats_tweets, file)
     }
   )
 }

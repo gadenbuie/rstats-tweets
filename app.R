@@ -162,14 +162,16 @@ server <- function(input, output) {
   
   output$tweets <- DT::renderDataTable({
     tweets() %>% 
-      select(created_at, screen_name, text, retweet_count, favorite_count, mentions_screen_name) %>% 
+      select(created_at, screen_name, text, retweet_count, favorite_count, mentions_screen_name, urls_expanded_url) %>% 
       mutate(created_at = strftime(created_at, '%F %T', tz = 'America/New_York'),
              mentions_screen_name = map_chr(mentions_screen_name, paste, collapse = ', '),
-             mentions_screen_name = ifelse(mentions_screen_name == 'NA', '', mentions_screen_name))
+             mentions_screen_name = ifelse(mentions_screen_name == 'NA', '', mentions_screen_name),
+             urls_expanded_url = map_chr(urls_expanded_url, ~ paste(glue::glue('<a href="{.}" target="_blank">{.}</a>'), collapse = ", ")))
   },
   selection = 'single', 
   rownames = FALSE, 
-  colnames = c("Timestamp", "User", "Tweet", "RT", "Fav", "Mentioned"), 
+  colnames = c("Timestamp", "User", "Tweet", "RT", "Fav", "Mentioned", "URL"), 
+  escape = FALSE,
   filter = 'top',
   options = list(lengthMenu = c(5, 10, 25, 50, 100), pageLength = 5)
   )

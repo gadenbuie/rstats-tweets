@@ -11,6 +11,7 @@ source("init.R")
 setCacheDir('data')
 simpleCache("rstats_tweets", source("update.R"))
 simpleCache("top_hashtags")
+simpleCache("related_hashtags")
 
 get_tweet_blockquote <- function(screen_name, status_id) {
   bq <- httr::GET(glue("https://publish.twitter.com/oembed?url=https://twitter.com/{screen_name}/status/{status_id}?omit_script=true"))
@@ -81,7 +82,7 @@ ui <- fluidPage(
   column(8, DT::dataTableOutput('tweets'))
 )
 
-server <- function(input, output) {
+server <- function(input, output, session) {
   output$help_text <- renderUI({
     req(input$view)
     switch(

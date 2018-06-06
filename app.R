@@ -8,6 +8,9 @@ requireNamespace('shinythemes', quietly = TRUE)
 requireNamespace('DT', quietly = TRUE)
 library(glue)
 source("init.R")
+setCacheDir('data')
+simpleCache("rstats_tweets", source("update.R"))
+simpleCache("top_hashtags")
 
 get_tweet_blockquote <- function(screen_name, status_id) {
   bq <- httr::GET(glue("https://publish.twitter.com/oembed?url=https://twitter.com/{screen_name}/status/{status_id}?omit_script=true"))
@@ -69,7 +72,7 @@ ui <- fluidPage(
                  , "or", downloadLink('download_tweets', "Download Tweets")
                ),
                tags$p(
-                 "Updated:", strftime(cacheTime, "%F %T %Z", tz = 'America/New_York')
+                 "Updated:", strftime(file.info('data/rstats_tweets.rds')$mtime, "%F %T %Z", tz = 'America/New_York')
                )
              )
     )
@@ -91,16 +94,19 @@ server <- function(input, output) {
       NULL
     )
   })
+  
+  rstats_tweets <- reactiveFileReader(300000, session, "data/rstats_tweets.rds", readRDS)
+  
   tweets <- reactive({
     x <- switch(
       input$view,
-      'Popular' = rstats_tweets %>% 
+      'Popular' = rstats_tweets() %>% 
         arrange(desc(retweet_count + favorite_count), 
                 -map_int(mentions_screen_name, length)),
-      'Tips' = rstats_tweets %>% filter(relates_tip, !is_retweet),
-      'Talks' = rstats_tweets %>% filter(relates_session, !is_retweet),
-      'Pictures' = rstats_tweets %>% filter(!is_retweet, !is.na(media_url)),
-     rstats_tweets
+      'Tips' = rstats_tweets() %>% filter(relates_tip, !is_retweet),
+      'Talks' = rstats_tweets() %>% filter(relates_session, !is_retweet),
+      'Pictures' = rstats_tweets() %>% filter(!is_retweet, !is.na(media_url)),
+     rstats_tweets()
     ) 
     
     if (input$view %in% c('All', 'Popular')) {
@@ -194,7 +200,7 @@ server <- function(input, output) {
       paste("rstats_tweets-", Sys.Date(), ".RDS", sep="")
     },
     content = function(file) {
-      saveRDS(rstats_tweets, file)
+      saveRDS(rstats_tweets(), file)
     }
   )
 }
